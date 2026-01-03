@@ -10,27 +10,106 @@ router.use(authenticate);
 // Get available slots
 router.get('/', async (req, res) => {
   try {
-    const { date } = req.query;
+    const { date, includeBooked } = req.query;
     const query = { isBooked: false };
 
+    // If admin requests includeBooked, get all slots
+    if (includeBooked === 'true' && req.user.role === 'ADMIN') {
+      delete query.isBooked;
+    }
+
     if (date) {
-      const startDate = new Date(date);
+      // Parse the date and create start/end of day bounds
+      const selectedDate = new Date(date);
+      
+      // Validate date
+      if (isNaN(selectedDate.getTime())) {
+        return res.status(400).json({ message: 'Invalid date format' });
+      }
+      
+      // Create start and end of day bounds for accurate date filtering
+      const startDate = new Date(selectedDate);
       startDate.setHours(0, 0, 0, 0);
-      const endDate = new Date(date);
+      
+      const endDate = new Date(selectedDate);
       endDate.setHours(23, 59, 59, 999);
-      query.date = { $gte: startDate, $lte: endDate };
+      
+      query.date = { 
+        $gte: startDate, 
+        $lte: endDate 
+      };
+      
+      console.log('Fetching slots for date:', {
+        requestedDate: date,
+        startDate: startDate.toISOString(),
+        endDate: endDate.toISOString(),
+        query,
+        includeBooked,
+        userRole: req.user.role
+      });
     } else {
-      // Default to today and future dates
+      // Default to today and future dates only
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       query.date = { $gte: today };
+      
+      console.log('Fetching slots for today and future:', {
+        today: today.toISOString(),
+        query,
+        includeBooked,
+        userRole: req.user.role
+      });
+    }
+
+    const slots = await Slot.find(query).sort({ date: 1, timeSlot: 1 });
+    
+    console.log('Found slots:', slots.length);
+    slots.forEach(slot => {
+      console.log('Slot:', {
+        id: slot._id,
+        date: slot.date.toISOString(),
+        timeSlot: slot.timeSlot,
+        isBooked: slot.isBooked
+      });
+    });
+
+    res.json({ slots });
+  } catch (error) {
+    console.error('Get slots error:', error);
+    res.status(500).json({ message: 'Failed to fetch slots', error: error.message });
+  }
+});
+
+// Get all slots (including booked) for debugging - Admin only
+router.get('/all', authorize('ADMIN'), async (req, res) => {
+  try {
+    const { date } = req.query;
+    const query = {};
+
+    if (date) {
+      const selectedDate = new Date(date);
+      
+      if (isNaN(selectedDate.getTime())) {
+        return res.status(400).json({ message: 'Invalid date format' });
+      }
+      
+      const startDate = new Date(selectedDate);
+      startDate.setHours(0, 0, 0, 0);
+      
+      const endDate = new Date(selectedDate);
+      endDate.setHours(23, 59, 59, 999);
+      
+      query.date = { 
+        $gte: startDate, 
+        $lte: endDate 
+      };
     }
 
     const slots = await Slot.find(query).sort({ date: 1, timeSlot: 1 });
 
     res.json({ slots });
   } catch (error) {
-    console.error('Get slots error:', error);
+    console.error('Get all slots error:', error);
     res.status(500).json({ message: 'Failed to fetch slots', error: error.message });
   }
 });

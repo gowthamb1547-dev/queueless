@@ -1,12 +1,11 @@
 # QueueLess – Smart Appointment Booking System
 
-A complete, production-ready full-stack web application for managing appointments with role-based access control, Google OAuth authentication, and real-time slot management.
+A complete, production-ready full-stack web application for managing appointments with role-based access control, JWT authentication, and real-time slot management.
 
 ## 🚀 Features
 
 ### Authentication
 - User registration & login (email/password)
-- Google OAuth login
 - JWT access & refresh tokens
 - Secure logout
 - Role-based access (USER, ADMIN)
@@ -32,7 +31,7 @@ A complete, production-ready full-stack web application for managing appointment
 - **Frontend**: Next.js 14 (App Router), React 18, Tailwind CSS
 - **Backend**: Express.js, Node.js
 - **Database**: MongoDB with Mongoose
-- **Authentication**: JWT + Google OAuth 2.0
+- **Authentication**: JWT (email/password)
 - **UI**: Tailwind CSS (responsive, modern design)
 
 ## 📁 Project Structure
@@ -60,7 +59,6 @@ project6/
 │   │   ├── login/
 │   │   ├── register/
 │   │   ├── dashboard/
-│   │   ├── auth/
 │   │   ├── layout.js
 │   │   ├── page.js
 │   │   └── globals.css
@@ -81,14 +79,10 @@ project6/
 
 ## 🔧 Setup Instructions
 
-> **📖 For detailed step-by-step setup, see [SETUP.md](./SETUP.md)**  
-> **✅ For verification checklist, see [VERIFY.md](./VERIFY.md)**
-
 ### Prerequisites
 
 - Node.js (v18 or higher)
 - MongoDB (local or MongoDB Atlas)
-- Google OAuth credentials (optional - for Google login)
 
 ### Backend Setup
 
@@ -104,16 +98,16 @@ npm install
 
 3. Create a `.env` file (copy from `env.example.txt`):
 ```bash
-PORT=5000
-MONGODB_URI=mongodb://localhost:27017/queueless
-JWT_SECRET=your_jwt_secret_key_here_change_in_production
-JWT_REFRESH_SECRET=your_jwt_refresh_secret_key_here_change_in_production
-GOOGLE_CLIENT_ID=your_google_client_id_here
-GOOGLE_CLIENT_SECRET=your_google_client_secret_here
+MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/queueless?retryWrites=true&w=majority
+JWT_SECRET=supersecret
+JWT_REFRESH_SECRET=refreshsecret
 FRONTEND_URL=http://localhost:3000
 BACKEND_URL=http://localhost:5000
+PORT=5000
 NODE_ENV=development
 ```
+
+**Important**: Replace `MONGODB_URI` with your actual MongoDB connection string.
 
 4. Start the backend server:
 ```bash
@@ -141,7 +135,6 @@ npm install
 3. Create a `.env.local` file (copy from `.env.example`):
 ```bash
 NEXT_PUBLIC_API_URL=http://localhost:5000
-NEXT_PUBLIC_GOOGLE_CLIENT_ID=your_google_client_id_here
 ```
 
 4. Start the frontend development server:
@@ -151,24 +144,12 @@ npm run dev
 
 The frontend will run on `http://localhost:3000`
 
-## 🔐 Google OAuth Setup
-
-1. Go to [Google Cloud Console](https://console.cloud.google.com/)
-2. Create a new project or select an existing one
-3. Enable Google+ API
-4. Create OAuth 2.0 credentials:
-   - Application type: Web application
-   - Authorized redirect URIs: `http://localhost:5000/auth/google/callback`
-5. Copy the Client ID and Client Secret to your `.env` files
-
 ## 📡 API Endpoints
 
 ### Authentication
-- `POST /auth/register` - Register new user
-- `POST /auth/login` - Login user
-- `GET /auth/google` - Initiate Google OAuth
-- `GET /auth/google/callback` - Google OAuth callback
-- `GET /auth/me` - Get current user
+- `POST /auth/register` - Register new user (email/password)
+- `POST /auth/login` - Login user (email/password)
+- `GET /auth/me` - Get current user (protected)
 - `POST /auth/logout` - Logout user
 - `POST /auth/refresh` - Refresh access token
 
@@ -189,10 +170,8 @@ The frontend will run on `http://localhost:3000`
 ### User
 - `name` (String, required)
 - `email` (String, required, unique)
-- `password` (String, required for local auth)
+- `password` (String, required, hashed with bcrypt)
 - `role` (String, enum: 'USER' | 'ADMIN', default: 'USER')
-- `provider` (String, enum: 'local' | 'google')
-- `googleId` (String, optional)
 - `createdAt` (Date, auto)
 
 ### Appointment
@@ -283,11 +262,6 @@ db.users.updateOne(
 - Verify `FRONTEND_URL` in backend `.env` matches your frontend URL
 - Check CORS configuration in `backend/server.js`
 
-### Google OAuth Not Working
-- Verify Google OAuth credentials in `.env`
-- Check redirect URI matches Google Cloud Console settings
-- Ensure Google+ API is enabled
-
 ### Token Expiration
 - Access tokens expire in 15 minutes
 - Refresh tokens expire in 7 days
@@ -310,7 +284,6 @@ Before deploying to production:
 4. Use MongoDB Atlas or a production MongoDB instance
 5. Set up proper error logging
 6. Configure HTTPS
-7. Update Google OAuth redirect URIs for production domain
 
 ## 📄 License
 
@@ -318,5 +291,4 @@ This project is open source and available for use.
 
 ---
 
-**Built with ❤️ for production-ready appointment booking**
 

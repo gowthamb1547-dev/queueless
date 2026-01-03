@@ -63,9 +63,28 @@ router.post('/', async (req, res) => {
       status: 'Pending'
     });
 
-    // Mark slot as booked
-    slot.isBooked = true;
-    await slot.save();
+    // Mark slot as booked - use the exact same date range query for consistency
+    const slotToUpdate = await Slot.findOne({ 
+      date: { $gte: startOfDay, $lte: endOfDay }, 
+      timeSlot,
+      isBooked: false  // Ensure we only update if it's not already booked
+    });
+    
+    if (!slotToUpdate) {
+      // Rollback appointment creation if slot is not available
+      await Appointment.findByIdAndDelete(appointment._id);
+      return res.status(400).json({ message: 'Time slot is no longer available' });
+    }
+    
+    slotToUpdate.isBooked = true;
+    await slotToUpdate.save();
+    
+    console.log('Slot marked as booked:', {
+      slotId: slotToUpdate._id,
+      date: slotToUpdate.date,
+      timeSlot: slotToUpdate.timeSlot,
+      isBooked: slotToUpdate.isBooked
+    });
 
     res.status(201).json({
       message: 'Appointment created successfully',
@@ -209,12 +228,25 @@ router.delete('/:id', async (req, res) => {
     
     const slot = await Slot.findOne({
       date: { $gte: slotStart, $lte: slotEnd },
-      timeSlot: appointment.timeSlot
+      timeSlot: appointment.timeSlot,
+      isBooked: true  // Only update if currently booked
     });
 
     if (slot) {
       slot.isBooked = false;
       await slot.save();
+      
+      console.log('Slot marked as available:', {
+        slotId: slot._id,
+        date: slot.date,
+        timeSlot: slot.timeSlot,
+        isBooked: slot.isBooked
+      });
+    } else {
+      console.log('No booked slot found to free up:', {
+        appointmentDate: appointmentDate.toISOString(),
+        timeSlot: appointment.timeSlot
+      });
     }
 
     await Appointment.findByIdAndDelete(req.params.id);

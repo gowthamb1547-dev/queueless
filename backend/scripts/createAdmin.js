@@ -24,8 +24,7 @@ const createAdmin = async () => {
       name: 'Admin User',
       email,
       password,
-      role: 'ADMIN',
-      provider: 'local'
+      role: 'ADMIN'
     });
 
     console.log('✅ Admin user created successfully!');

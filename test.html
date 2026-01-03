@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QueueLess Slot Testing</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+        .section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .error { color: red; }
+        .success { color: green; }
+        button { padding: 10px 15px; margin: 5px; cursor: pointer; }
+        input, select { padding: 8px; margin: 5px; }
+        pre { background: #f5f5f5; padding: 10px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>QueueLess Slot Filtering Test</h1>
+    
+    <div class="section">
+        <h2>Login</h2>
+        <input type="email" id="email" placeholder="Email" value="admin@example.com">
+        <input type="password" id="password" placeholder="Password" value="admin123">
+        <button onclick="login()">Login</button>
+        <div id="loginResult"></div>
+    </div>
+
+    <div class="section">
+        <h2>Create Test Slot</h2>
+        <input type="date" id="slotDate">
+        <input type="text" id="slotTime" placeholder="Time (e.g., 09:00 AM)">
+        <button onclick="createSlot()">Create Slot</button>
+        <div id="createResult"></div>
+    </div>
+
+    <div class="section">
+        <h2>Test Slot Filtering</h2>
+        <input type="date" id="filterDate">
+        <button onclick="testFiltering()">Test Available Slots</button>
+        <button onclick="testAllSlots()">Test All Slots (Admin)</button>
+        <div id="filterResult"></div>
+    </div>
+
+    <div class="section">
+        <h2>Test Booking</h2>
+        <input type="date" id="bookDate">
+        <input type="text" id="bookTime" placeholder="Time (e.g., 09:00 AM)">
+        <input type="text" id="bookReason" placeholder="Reason for appointment">
+        <button onclick="bookSlot()">Book Slot</button>
+        <div id="bookResult"></div>
+    </div>
+
+    <div class="section">
+        <h2>Debug Output</h2>
+        <pre id="debug"></pre>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:5000';
+        let authToken = null;
+
+        function log(message) {
+            const debug = document.getElementById('debug');
+            debug.textContent += new Date().toLocaleTimeString() + ': ' + message + '\n';
+        }
+
+        async function login() {
+            try {
+                const email = document.getElementById('email').value;
+                const password = document.getElementById('password').value;
+                
+                log(`Attempting login: ${email}`);
+                
+                const response = await fetch(`${API_URL}/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ email, password })
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    authToken = data.accessToken;
+                    document.getElementById('loginResult').innerHTML = '<span class="success">✅ Login successful</span>';
+                    log('Login successful');
+                } else {
+                    document.getElementById('loginResult').innerHTML = `<span class="error">❌ ${data.message}</span>`;
+                    log(`Login failed: ${data.message}`);
+                }
+            } catch (error) {
+                document.getElementById('loginResult').innerHTML = `<span class="error">❌ ${error.message}</span>`;
+                log(`Login error: ${error.message}`);
+            }
+        }
+
+        async function createSlot() {
+            try {
+                const date = document.getElementById('slotDate').value;
+                const timeSlot = document.getElementById('slotTime').value;
+                
+                log(`Creating slot: ${date} ${timeSlot}`);
+                
+                const response = await fetch(`${API_URL}/slots`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ date, timeSlot })
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    document.getElementById('createResult').innerHTML = '<span class="success">✅ Slot created</span>';
+                    log('Slot created successfully');
+                } else {
+                    document.getElementById('createResult').innerHTML = `<span class="error">❌ ${data.message}</span>`;
+                    log(`Create slot failed: ${data.message}`);
+                }
+            } catch (error) {
+                document.getElementById('createResult').innerHTML = `<span class="error">❌ ${error.message}</span>`;
+                log(`Create slot error: ${error.message}`);
+            }
+        }
+
+        async function testFiltering() {
+            try {
+                const date = document.getElementById('filterDate').value;
+                const url = date ? `${API_URL}/slots?date=${date}` : `${API_URL}/slots`;
+                
+                log(`Testing available slots for: ${date || 'all future dates'}`);
+                
+                const response = await fetch(url, {
+                    credentials: 'include'
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    const slots = data.slots;
+                    let html = `<span class="success">✅ Found ${slots.length} available slots</span><br>`;
+                    slots.forEach(slot => {
+                        html += `${slot.date.split('T')[0]} ${slot.timeSlot}<br>`;
+                    });
+                    document.getElementById('filterResult').innerHTML = html;
+                    log(`Found ${slots.length} available slots`);
+                } else {
+                    document.getElementById('filterResult').innerHTML = `<span class="error">❌ ${data.message}</span>`;
+                    log(`Filter failed: ${data.message}`);
+                }
+            } catch (error) {
+                document.getElementById('filterResult').innerHTML = `<span class="error">❌ ${error.message}</span>`;
+                log(`Filter error: ${error.message}`);
+            }
+        }
+
+        async function testAllSlots() {
+            try {
+                const date = document.getElementById('filterDate').value;
+                const url = date ? `${API_URL}/slots?date=${date}&includeBooked=true` : `${API_URL}/slots?includeBooked=true`;
+                
+                log(`Testing all slots for: ${date || 'all future dates'}`);
+                
+                const response = await fetch(url, {
+                    credentials: 'include'
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    const slots = data.slots;
+                    let html = `<span class="success">✅ Found ${slots.length} total slots</span><br>`;
+                    slots.forEach(slot => {
+                        html += `${slot.date.split('T')[0]} ${slot.timeSlot} - ${slot.isBooked ? 'BOOKED' : 'AVAILABLE'}<br>`;
+                    });
+                    document.getElementById('filterResult').innerHTML = html;
+                    log(`Found ${slots.length} total slots`);
+                } else {
+                    document.getElementById('filterResult').innerHTML = `<span class="error">❌ ${data.message}</span>`;
+                    log(`All slots failed: ${data.message}`);
+                }
+            } catch (error) {
+                document.getElementById('filterResult').innerHTML = `<span class="error">❌ ${error.message}</span>`;
+                log(`All slots error: ${error.message}`);
+            }
+        }
+
+        async function bookSlot() {
+            try {
+                const date = document.getElementById('bookDate').value;
+                const timeSlot = document.getElementById('bookTime').value;
+                const reason = document.getElementById('bookReason').value;
+                
+                log(`Booking slot: ${date} ${timeSlot}`);
+                
+                const response = await fetch(`${API_URL}/appointments`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ date, timeSlot, reason })
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    document.getElementById('bookResult').innerHTML = '<span class="success">✅ Appointment booked</span>';
+                    log('Appointment booked successfully');
+                } else {
+                    document.getElementById('bookResult').innerHTML = `<span class="error">❌ ${data.message}</span>`;
+                    log(`Booking failed: ${data.message}`);
+                }
+            } catch (error) {
+                document.getElementById('bookResult').innerHTML = `<span class="error">❌ ${error.message}</span>`;
+                log(`Booking error: ${error.message}`);
+            }
+        }
+
+        // Set today's date as default
+        document.addEventListener('DOMContentLoaded', function() {
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('slotDate').value = today;
+            document.getElementById('filterDate').value = today;
+            document.getElementById('bookDate').value = today;
+        });
+    </script>
+</body>
+</html>

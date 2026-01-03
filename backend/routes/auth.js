@@ -2,48 +2,8 @@ import express from 'express';
 import User from '../models/User.js';
 import { generateTokens, verifyRefreshToken } from '../utils/jwt.js';
 import { authenticate } from '../middleware/auth.js';
-import passport from 'passport';
-import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
 
 const router = express.Router();
-
-// Configure Google OAuth Strategy
-passport.use(new GoogleStrategy({
-  clientID: process.env.GOOGLE_CLIENT_ID,
-  clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-  callbackURL: `${process.env.BACKEND_URL || 'http://localhost:5000'}/auth/google/callback`
-}, async (accessToken, refreshToken, profile, done) => {
-  try {
-    let user = await User.findOne({ googleId: profile.id });
-
-    if (user) {
-      return done(null, user);
-    }
-
-    // Check if user exists with this email
-    user = await User.findOne({ email: profile.emails[0].value });
-
-    if (user) {
-      // Link Google account to existing user
-      user.googleId = profile.id;
-      user.provider = 'google';
-      await user.save();
-      return done(null, user);
-    }
-
-    // Create new user
-    user = await User.create({
-      name: profile.displayName,
-      email: profile.emails[0].value,
-      provider: 'google',
-      googleId: profile.id
-    });
-
-    return done(null, user);
-  } catch (error) {
-    return done(error, null);
-  }
-}));
 
 // Register
 router.post('/register', async (req, res) => {
@@ -66,8 +26,7 @@ router.post('/register', async (req, res) => {
     const user = await User.create({
       name,
       email,
-      password,
-      provider: 'local'
+      password
     });
 
     const { accessToken, refreshToken } = generateTokens(user._id);
@@ -109,10 +68,6 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
-    if (user.provider !== 'local') {
-      return res.status(400).json({ message: 'Please use Google OAuth to login' });
-    }
-
     const isMatch = await user.comparePassword(password);
     if (!isMatch) {
       return res.status(401).json({ message: 'Invalid credentials' });
@@ -142,32 +97,6 @@ router.post('/login', async (req, res) => {
     res.status(500).json({ message: 'Login failed', error: error.message });
   }
 });
-
-// Google OAuth routes
-router.get('/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
-
-router.get('/google/callback',
-  passport.authenticate('google', { session: false }),
-  async (req, res) => {
-    try {
-      const user = req.user;
-      const { accessToken, refreshToken } = generateTokens(user._id);
-
-      res.cookie('refreshToken', refreshToken, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        maxAge: 7 * 24 * 60 * 60 * 1000
-      });
-
-      // Redirect to frontend with token
-      res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/auth/callback?token=${accessToken}`);
-    } catch (error) {
-      console.error('Google OAuth error:', error);
-      res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/login?error=oauth_failed`);
-    }
-  }
-);
 
 // Get current user
 router.get('/me', authenticate, async (req, res) => {

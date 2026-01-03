@@ -3,7 +3,6 @@ import mongoose from 'mongoose';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import dotenv from 'dotenv';
-import passport from 'passport';
 import authRoutes from './routes/auth.js';
 import appointmentRoutes from './routes/appointments.js';
 import slotRoutes from './routes/slots.js';
@@ -20,7 +19,6 @@ app.use(cors({
 }));
 app.use(express.json());
 app.use(cookieParser());
-app.use(passport.initialize());
 
 // Routes
 app.use('/auth', authRoutes);
