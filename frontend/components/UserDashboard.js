@@ -89,6 +89,13 @@ export default function UserDashboard() {
       return;
     }
 
+    // Check if selected date is Sunday
+    const selectedDate = new Date(formData.date);
+    if (selectedDate.getDay() === 0) {
+      setError('Please select another day. Appointments are not available on Sundays.');
+      return;
+    }
+
     setSubmitting(true);
 
     try {
@@ -268,6 +275,15 @@ export default function UserDashboard() {
                     value={formData.date}
                     onChange={(e) => {
                       const date = e.target.value;
+                      const selectedDate = new Date(date);
+                      
+                      // Check if it's Sunday and show warning
+                      if (selectedDate.getDay() === 0) {
+                        setError('Please select another day. Appointments are not available on Sundays.');
+                      } else {
+                        setError('');
+                      }
+                      
                       setFormData({ ...formData, date, timeSlot: '' });
                       setSelectedDate(date);
                     }}

@@ -22,6 +22,11 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ message: 'Invalid date format' });
     }
 
+    // Check if the selected date is a Sunday (day 0)
+    if (appointmentDate.getDay() === 0) {
+      return res.status(400).json({ message: 'Please select another day. Appointments are not available on Sundays.' });
+    }
+
     // Normalize date to midnight for comparison
     const normalizedDate = new Date(appointmentDate);
     normalizedDate.setHours(0, 0, 0, 0);
